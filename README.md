@@ -1,4 +1,4 @@
 tw2inky
 =======
 
-Find linkedin users tweeting about various hashtags
+Maps tweets to linkedin profiles
