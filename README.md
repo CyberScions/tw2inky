@@ -3,9 +3,11 @@ tw2inky
 
 Description: Maps tweets to linkedin profiles
 
-Requires the following Python libraries installed: BeautifulSoup4, Requests, Twython
+Requires:
 
-Requires a twitter account to obtain application keys and Oauth tokens
+Python libraries installed: BeautifulSoup4, Requests, Twython
+
+Twitter account to obtain application keys and Oauth tokens
 
 Usage:
 
