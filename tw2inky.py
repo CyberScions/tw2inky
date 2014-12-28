@@ -87,9 +87,9 @@ def scrapeLinkedInProfile(url=None):
             	request = urllib2.Request(url)
                 request.add_header('User-Agent', HEADER)
                 response = urllib2.urlopen(request)
-                redditHtml = response.read()
+                html = response.read()
                 response.close()
-                soup = BeautifulSoup(redditHtml)
+                soup = BeautifulSoup(html)
         except Exception as e:
                 raise
 
