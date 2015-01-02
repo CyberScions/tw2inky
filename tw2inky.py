@@ -1,32 +1,33 @@
 #!/usr/bin/python
 
-import re, requests, urllib2
-from bs4 import BeautifulSoup
-from twython import Twython
+import os, re, sys, urllib2
 
-#enter your twitter app details here
-APP_KEY=''
-APP_SECRET=''
-OAUTH_TOKEN=''
-OAUTH_TOKEN_SECRET=''
+try:
+	import requests
+	from bs4 import BeautifulSoup
+	from twython import Twython
+	import ConfigParser
+except Exception as e:
+        print '[error] %s' % e
+        print 'Please resolve import dependencies.'
+        sys.exit(1)
 
-#enter twitter hashtags to search for
-SEARCH_HASH = ['#BIGDATA', '#DEVOPS', '#CLOUD']
-
-#sets the maximum number of twitter search results
-SEARCH_LIMIT = '500'
 
 class HashTagTweets(object):
 
-	def __init__(self, tweet=None):
+	def __init__(self, tweet=None, config=None):
 		self.tweet = tweet
-		self.twitter = Twython(APP_KEY, APP_SECRET,
-				OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
+		self.config = config
+		self.max_results = '200'
+		if self.config:
+			self.max_results = self.config.max_results
+			self.twitter = Twython(self.config.app_key, self.config.app_secret,
+				self.config.oauth_token, self.config.oauth_token_secret)
 
-	def queryHashtag(self, hashtag=None, count=SEARCH_LIMIT):
+	def queryHashtag(self, hashtag=None):
         	if not hashtag:
                 	return None
-        	tweets = self.twitter.search( q=( ('%s') % hashtag ), count=('%s' % count) )
+        	tweets = self.twitter.search( q=( ('%s') % hashtag ), count=('%s' % self.max_results) )
         	return tweets['statuses']
 
 
@@ -106,7 +107,7 @@ def scrapeLinkedInProfile(url=None):
 	except:
 		pass
         return {'name': name, 'headline': headline, 'locality': locality,
-                'industry': industry, 'position': position, 'employer': employer}
+                'industry': industry, 'position': position, 'employer': employer, 'url': url}
 
 def printLinkedInProfile(profile=None):
 	if not profile:
@@ -117,15 +118,80 @@ def printLinkedInProfile(profile=None):
 	print 'Industry: %s' % profile['industry']
 	print 'Position: %s' % profile['position']
 	print 'Employer: %s' % profile['employer']
+	print 'URL: %s' % profile['url']
+
+
+class tw2inkySetUp:
+        def __init__(self):
+                self.status = 0
+                self.path = '/etc/tw2inky'
+                try:
+                    	os.makedirs(self.path)
+                except OSError as e:
+                        pass
+                finally:
+                        self.path = '%s/tw2inky.conf' % self.path
+                        try:
+                            	f = open(self.path, 'r').close()
+                                print 'Found config file %s' % self.path
+                                self.status = 0
+                        except Exception as e:
+                                print '[warning] %s' % e
+				print 'Creating new config at /etc/tw2inky/tw2inky.conf'
+                                f =  open(self.path, 'w')
+                                f.write('[KEYS]\n')
+                                f.write('APP_KEY=\n')
+                                f.write('APP_SECRET=\n')
+                                f.write('OAUTH_TOKEN=\n')
+                                f.write('OAUTH_TOKEN_SECRET=\n\n')
+                                f.write('[SEARCH]\n')
+                                f.write('max_results=500\n')
+                                f.write('include_twitter_hash=#bigdata, #cloudcomputing, #devops\n')
+                                f.write('include_linkedin_locality=San Francisco, Los Angelas\n')
+                                f.write('include_linkedin_position=Manager, Director, CIO, CTO, VP\n')
+                                f.write('exclude_twitter_hash=#porn\n')
+                                f.write('exclude_linkedin_company=IBM, HP\n\n')
+                                f.close()
+                                self.status = 1
+                        if not self.parseConfig():
+                                self.status = 1
+                        else:
+                             	self.status = 0
+
+        def parseConfig(self):
+                configParser = ConfigParser.RawConfigParser()
+                configFilePath = (r'%s') % self.path
+                configParser.read(configFilePath)
+                self.app_key = str(configParser.get('KEYS', 'APP_KEY'))
+                self.app_secret = str(configParser.get('KEYS', 'APP_SECRET'))
+                self.oauth_token = str(configParser.get('KEYS', 'OAUTH_TOKEN'))
+                self.oauth_token_secret = str(configParser.get('KEYS', 'OAUTH_TOKEN_SECRET'))
+                self.include_twitter_hash = configParser.get('SEARCH', 'include_twitter_hash').split(',')
+                self.include_linkedin_locality = configParser.get('SEARCH', 'include_linkedin_locality').split(',')
+                self.include_linkedin_company = configParser.get('SEARCH', 'include_linkedin_position').split(',')
+                self.exclude_twitter_hash = configParser.get('SEARCH', 'exclude_twitter_hash').split(',')
+                self.exclude_linkedin_company = configParser.get('SEARCH', 'exclude_linkedin_company').split(',')
+                self.max_results = str(configParser.get('SEARCH', 'max_results'))
+                if not (len(self.app_key) or len(self.app_secret) or len(self.oauth_token) or len(self.oauth_token_secret)):
+                        return False
+                return True
 
 
 if __name__ == '__main__':
+
+        config = tw2inkySetUp()
+        if config.status:
+                print 'Setup config complete, please update app keys and search criteria.'
+		sys.exit(0)
+        else:
+             	print 'Setup config complete, detected app keys and search criteria.'
+
         try:
-        	words = SEARCH_HASH
-		H = HashTagTweets()
+        	words = config.include_twitter_hash
+		H = HashTagTweets(config=config)
 		for word in words:
-			print "tw2inky: searching tweets for %s\n" % word
-			statuses = H.queryHashtag(hashtag=word, count=SEARCH_LIMIT)
+			print "\nSearching tweets for %s\n" % word
+			statuses = H.queryHashtag(hashtag=word)
 			for tweet in statuses:
 				T = HashTagTweets(tweet=tweet)
 				try:			
@@ -137,11 +203,12 @@ if __name__ == '__main__':
 							printLinkedInProfile(profile=profile)
 							print
 						except Exception as e:
-							print 'tw2inky: exception scraping %s\n%s\n' % (homepage, e)
+							print '[error] %s' % e
+							print 'Exception scraping %s\n%s\n' % (homepage, e)
 				except:
 					#user does not have a homepage
 					pass
 	except Exception as e:
-		print e
+		print '[error] %s' % e
 
-	print 'tw2inky: done'
+	print 'done!'

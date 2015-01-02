@@ -11,10 +11,9 @@ Twitter account to obtain application keys and Oauth tokens
 
 Usage:
 
-1) Update the SEARCH_HASH variable with list of hashtags to search.
-
-2) Update the SEARCH_COUNT variable with a max results limit.
-
-3) Execute the script: ./tw2inky.py 
+1) Run script to generate nececcary setup and config file
+2) Enter Twitter apps keys in config /etc/tw2inky/tw2inky.conf
+3) Update config file with search criteria
+4) Execute the script: ./tw2inky.py
 
 
