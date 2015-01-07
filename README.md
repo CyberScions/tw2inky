@@ -22,6 +22,7 @@ Usage:
 
 Example Config (keys not shown):
 
+<pre>
 [KEYS]
 APP_KEY=''
 APP_SECRET=''
@@ -35,3 +36,4 @@ include_linkedin_locality=San Francisco, Los Angelas
 include_linkedin_position=Manager, Director, CEO, CIO, CTO, VP
 exclude_twitter_hash=#porn
 exclude_linkedin_company=IBM, HP
+</pre>
