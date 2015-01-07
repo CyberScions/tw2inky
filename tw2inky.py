@@ -148,7 +148,7 @@ class tw2inkySetUp:
                                 f.write('max_results=500\n')
                                 f.write('include_twitter_hash=#bigdata, #cloudcomputing, #devops\n')
                                 f.write('include_linkedin_locality=San Francisco, Los Angelas\n')
-                                f.write('include_linkedin_position=Manager, Director, CIO, CTO, VP\n')
+                                f.write('include_linkedin_position=Manager, Director, CIO, CTO, CSO, CEO, Founder, Owner, President, Partner, VP\n')
                                 f.write('exclude_twitter_hash=#porn\n')
                                 f.write('exclude_linkedin_company=IBM, HP\n\n')
                                 f.close()
@@ -171,6 +171,7 @@ class tw2inkySetUp:
                 self.include_linkedin_company = configParser.get('SEARCH', 'include_linkedin_position').split(',')
                 self.exclude_twitter_hash = configParser.get('SEARCH', 'exclude_twitter_hash').split(',')
                 self.exclude_linkedin_company = configParser.get('SEARCH', 'exclude_linkedin_company').split(',')
+		self.include_linkedin_position = configParser.get('SEARCH', 'include_linkedin_position').split(',')
                 self.max_results = str(configParser.get('SEARCH', 'max_results'))
                 if not (len(self.app_key) or len(self.app_secret) or len(self.oauth_token) or len(self.oauth_token_secret)):
                         return False
@@ -188,23 +189,53 @@ if __name__ == '__main__':
 
         try:
         	words = config.include_twitter_hash
+		exclude = config.exclude_twitter_hash
+
 		H = HashTagTweets(config=config)
 		for word in words:
 			print "\nSearching tweets for %s\n" % word
 			statuses = H.queryHashtag(hashtag=word)
 			for tweet in statuses:
 				T = HashTagTweets(tweet=tweet)
+
+				# dont include tweets with exclude hashtags
+				excludeTweet = False
+				for e in exclude:
+					if T.getText().lower().find(e.lower()) >=0:
+						excludeTweet = True
+				if excludeTweet:
+					continue
+
 				try:			
 					homepage = T.getUserExpandedURL()
 					if isLinkedInURL(url=homepage):
 						try:
-							print T.nicePrint()
 							profile = scrapeLinkedInProfile(url=homepage)
+
+							# include only if profile matches positions
+							if not profile['position']:
+								continue
+							includeProfile = False
+							for position in config.include_linkedin_position:
+								if includeProfile:
+									continue
+								positionParts = profile['position'].split()
+								for pos in positionParts:
+									#print position, pos
+									if includeProfile:
+										continue
+									if pos.lower().find(position.lower().strip()) >= 0:
+										includeProfile = True
+							if not includeProfile:
+								continue
+
+							print T.nicePrint()
 							printLinkedInProfile(profile=profile)
 							print
 						except Exception as e:
-							print '[error] %s' % e
-							print 'Exception scraping %s\n%s\n' % (homepage, e)
+							pass
+							#print '[error] %s' % e
+							#print 'Exception scraping %s\n%s\n' % (homepage, e)
 				except:
 					#user does not have a homepage
 					pass
